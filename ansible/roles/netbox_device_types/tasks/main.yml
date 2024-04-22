@@ -14,18 +14,18 @@
 
 - name: Install requirements using pip
   pip:
-    requirements: '/tmp/device-type-library-import/Device-Type-Library-Import/requirements.txt'
+    requirements: '/tmp/device-type-library-import/requirements.txt'
     virtualenv: '/tmp/device-type-library-import/Device-Type-Library-Import'
 
 - name: Copy .env.example to .env
   copy:
-    src: '/tmp/device-type-library-import/Device-Type-Library-Import/.env.example'
-    dest: '/tmp/device-type-library-import/Device-Type-Library-Import/.env'
+    src: '/tmp/device-type-library-import/.env.example'
+    dest: '/tmp/device-type-library-import/.env'
 
 - name: Run the import script
   command: './nb-dt-import.py'
   args:
-    chdir: '/tmp/device-type-library-import/Device-Type-Library-Import'
+    chdir: '/tmp/device-type-library-import'
     executable: '/bin/bash'
   environment:
     PATH: "{{ ansible_env.PATH }}:/tmp/device-type-library-import/Device-Type-Library-Import"
