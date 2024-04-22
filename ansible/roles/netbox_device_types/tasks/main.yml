@@ -35,9 +35,9 @@
     update: yes
 
 - name: Generate environment
-    template:
-      src: env.j2
-      dest: /tmp/device-type-library-import/.env
+  template:
+    src: env.j2
+    dest: /tmp/device-type-library-import/.env
 
 - name: Install requirements using pip
   pip:
