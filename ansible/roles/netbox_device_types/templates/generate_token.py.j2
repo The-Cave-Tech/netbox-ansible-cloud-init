@@ -9,7 +9,7 @@ with open(ENV_FILE) as file:
  
 nb_conn = pynetbox.api(url=env_vars['https://localhost'])
  
-token = nb_conn.create_token({{ admin }}, {{ netbox_admin_password }})
+token = nb_conn.create_token({{ netbox_username }}, {{ netbox_admin_password }})
  
 pprint.pprint(dict(token))
  
