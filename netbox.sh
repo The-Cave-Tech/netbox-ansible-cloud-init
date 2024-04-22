@@ -1,25 +1,50 @@
 #!/bin/bash
 
-# Update the system
-sudo apt update
+SOURCE_IMAGE="/var/lib/libvirt/images/jammy-server-cloudimg-amd64-disk-kvm.img"
+IMAGE="/var/lib/libvirt/images/netbox_base.img"
+CLOUD_INIT="$PWD/netbox-auto-cloud-init.yaml"
 
-# Install software-properties-common
-sudo apt install software-properties-common -y
+echo "cloud-init=$CLOUD_INIT"
 
-# Add Ansible PPA
-sudo add-apt-repository --yes --update ppa:ansible/ansible
+# Name of the virtual machine
+VM_NAME="netbox-auto"
 
-# Install Ansible and Git
-sudo apt install ansible git -y
+# Check if the VM is running and shut it down
+if virsh list --name | grep -q "$VM_NAME"; then
+    echo "Shutting down $VM_NAME..."
+    virsh shutdown "$VM_NAME"
+    # Wait for the VM to shut down
+    while virsh list --name | grep -q "$VM_NAME"; do
+        sleep 1
+    done
+    echo "$VM_NAME has been shut down."
+else
+    echo "$VM_NAME is not running or does not exist."
+fi
 
-# Create a temporary directory
-temp_dir=$(mktemp -d -t ci-XXXXXXXXXX -p /tmp)
+# Delete the VM
+if virsh dominfo "$VM_NAME" &>/dev/null; then
+    echo "Deleting $VM_NAME..."
+    virsh undefine "$VM_NAME" --remove-all-storage
+    echo "$VM_NAME has been deleted."
+else
+    echo "No VM named $VM_NAME exists."
+fi
 
-# Clone the GitHub repository into the temporary directory
-git clone https://github.com/darrenstarr/cloud-init-ansible.git $temp_dir
 
-# Run the Ansible playbook
-ansible-playbook $temp_dir/netbox.yml
+if [ -f IMAGE ]; then
+  rm IMAGE
+fi
 
-# Verify the installation
-ansible --version
+qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" 10G
+
+virt-install \
+        --name $VM_NAME \
+        --memory 2000 \
+        --noreboot \
+        --os-variant detect=on,name=ubuntu22.10 \
+        --cloud-init user-data="$CLOUD_INIT" \
+        --disk=size=10,backing_store="$IMAGE" \
+        --network bridge=br0,model=virtio \
+        --graphics vnc,listen=0.0.0.0 \
+        --noautoconsole
