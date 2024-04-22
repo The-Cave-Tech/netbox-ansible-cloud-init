@@ -2,6 +2,6 @@ all:
   hosts:
     localhost:
   children:
-    netbox-nodes:
+    netbox_nodes:
       hosts:
         localhost:
