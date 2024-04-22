@@ -2,14 +2,9 @@ import pynetbox
 import pprint
 import yaml
  
-ENV_FILE = "env.yml"
+nb_conn = pynetbox.api(url='https://localhost')
  
-with open(ENV_FILE) as file:
-    env_vars = yaml.safe_load(file)
- 
-nb_conn = pynetbox.api(url=env_vars['https://localhost'])
- 
-token = nb_conn.create_token({{ netbox_username }}, {{ netbox_admin_password }})
+token = nb_conn.create_token('{{ netbox_username }}', '{{ netbox_admin_password }}')
  
 pprint.pprint(dict(token))
  
