@@ -5,10 +5,10 @@
     dest: /tmp/generated_script.py
 
 - name: Install pynetbox
-  command: /opt/netbox/venv/bin/python/pip install pynetbox
+  command: /opt/netbox/venv/bin/pip install pynetbox
 
 - name: Run the Python script
-  command: /opt/netbox/venv/bin/python/bin /tmp/generated_script.py
+  command: /opt/netbox/venv/bin/python /tmp/generated_script.py
   register: script_output
 
 - name: Store trimmed output in variable
