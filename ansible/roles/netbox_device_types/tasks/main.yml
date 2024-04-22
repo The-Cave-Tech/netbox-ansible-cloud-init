@@ -23,7 +23,9 @@
     dest: '/tmp/device-type-library-import/.env'
 
 - name: Run the import script
-  shell: './nb-dt-import.py'
+  shell:
+    source /tmp/device-type-library-import/Device-Type-Library-Import/bin/activate
+    './nb-dt-import.py'
   args:
     chdir: '/tmp/device-type-library-import'
   environment:
