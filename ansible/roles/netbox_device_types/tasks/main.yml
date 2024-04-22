@@ -1,4 +1,26 @@
 ---
+  - name: Generate Python script from template
+    template:
+      src: generate_token.py.j2
+      dest: /tmp/generated_script.py
+
+  - name: Run the Python script
+    command: /opt/netbox/venv/bin/python/bin /tmp/generated_script.py
+    register: script_output
+
+  - name: Store trimmed output in variable
+    set_fact:
+      generated_token: "{{ script_output.stdout | trim }}"
+
+  - name: Show token
+    debug:
+      msg: "Token : {{ generated_token }}"
+
+  # - name: Delete the Python script
+  #   file:
+  #     path: /tmp/generated_script.py
+  #     state: absent
+
 - name: Install required packages
   apt:
     name:
@@ -12,15 +34,15 @@
     clone: yes
     update: yes
 
+- name: Generate environment
+    template:
+      src: env.j2
+      dest: /tmp/device-type-library-import/.env
+
 - name: Install requirements using pip
   pip:
     requirements: '/tmp/device-type-library-import/requirements.txt'
     virtualenv: '/tmp/device-type-library-import/Device-Type-Library-Import'
-
-- name: Copy .env.example to .env
-  copy:
-    src: '/tmp/device-type-library-import/.env.example'
-    dest: '/tmp/device-type-library-import/.env'
 
 - name: Run the import script
   shell:
