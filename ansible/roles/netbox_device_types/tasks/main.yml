@@ -1,4 +1,10 @@
 ---
+- name: Install required packages
+  apt:
+    name:
+      - python3-virtualenv
+    state: present
+
 - name: Clone Device-Type-Library-Import repository
   git:
     repo: 'https://github.com/netbox-community/Device-Type-Library-Import.git'
