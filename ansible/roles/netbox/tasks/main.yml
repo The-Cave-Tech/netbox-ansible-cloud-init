@@ -1,0 +1,252 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - postgresql
+      - python3
+      - python3-pip
+      - python3-venv
+      - python3-dev
+      - python-is-python3
+      - build-essential
+      - libxml2-dev
+      - libxslt1-dev
+      - libffi-dev
+      - libpq-dev
+      - libssl-dev
+      - zlib1g-dev
+      - redis-server
+      - nginx
+    state: present
+
+- name: Install libpq-dev
+  apt:
+    name: libpq-dev
+    state: present
+
+- name: Install psycopg2 using pip
+  pip:
+    name: psycopg2
+
+- name: Create netbox user
+  become_user: postgres
+  postgresql_user:
+    name: netbox
+    password: "{{ postgres_password }}"
+    role_attr_flags: CREATEDB
+
+- name: Create netbox database
+  become_user: postgres
+  postgresql_db:
+    name: netbox
+    owner: netbox
+
+- name: Grant privileges
+  become_user: postgres
+  postgresql_privs:
+    db: netbox
+    type: schema  
+    roles: netbox
+    privs: CREATE
+    objs: public
+
+- name: Create netbox group
+  group:
+    name: netbox
+    system: yes
+
+- name: Create netbox user and group
+  user:
+    name: netbox
+    group: netbox
+    system: yes
+    
+- name: Create directory /opt/netbox and change owner to netbox
+  file:
+    path: /opt/netbox
+    state: directory
+    owner: netbox
+    group: netbox
+    mode: '0755'
+
+- name: Clone netbox git repo
+  become_user: netbox
+  git:
+    repo: 'https://github.com/netbox-community/netbox.git'
+    dest: /opt/netbox
+    version: master
+    depth: 1
+
+- name: Remove contents of /home/netbox/.ansible directory
+  file:
+    path: /home/netbox/.ansible
+    state: absent
+  become_user: netbox
+
+- name: Check if configuration.py exists and get SECRET_KEY
+  shell: grep "SECRET_KEY =" /opt/netbox/netbox/netbox/configuration.py | cut -d "'" -f 2
+  register: old_secret_key
+  ignore_errors: true
+  changed_when: false
+
+#- name: Display the contents of secret_key
+#  debug: 
+#    msg: "Key is {{ old_secret_key.stdout }}" 
+
+- name: Set the secret key
+  set_fact: 
+    secret_key: "{{ old_secret_key.stdout }}"
+
+- name: Generate secret key if not exist
+  command: python3 /opt/netbox/netbox/generate_secret_key.py
+  register: generated_secret_key
+  when: secret_key == ""
+
+- name: Set secret_key variable
+  set_fact:
+    secret_key: "{{ generated_secret_key.stdout }}"
+  when: secret_key == ""
+
+- name: Copy configuration.py.j2 to configuration.py
+  template:
+    src: ./configuration.py.j2
+    dest: /opt/netbox/netbox/netbox/configuration.py
+    owner: netbox
+    group: netbox
+    mode: '0644'
+  vars:
+    secret_key: "{{ secret_key }}"
+
+- name: Check if netbox service is running
+  service:
+    name: netbox
+    state: started
+  register: service_status
+  ignore_errors: true
+
+- name: Run upgrade script if netbox service is not running
+  command: /opt/netbox/upgrade.sh
+  when: service_status is failed
+
+- name: Check if django superuser {{ netbox_username }} exists
+  django_manage:
+    command: shell -c 'import sys; from django.contrib.auth.models import User; print(User.objects.filter(username="{{ netbox_username }}").count())'
+    virtualenv: "{{ netbox_working_directory }}/venv"
+    project_path: "{{ netbox_working_directory }}/netbox"
+
+  register: checksuperuser
+  ignore_errors: True
+  changed_when: False
+
+- name: Show checksuperuser
+  debug:
+    msg: "checksuperuser {{ checksuperuser.out }}"
+
+- name: django create superuser {{ netbox_username }}
+  django_manage:
+    command: "createsuperuser --noinput --username={{ netbox_username }} --email={{ netbox_admin_email }}"
+    virtualenv: "{{ netbox_working_directory}}/venv"
+    project_path: "{{ netbox_working_directory }}/netbox"
+  when: checksuperuser.out|trim == "0"
+  changed_when: True
+  ignore_errors: True
+
+- name: Set superuser {{ netbox_username }} password
+  django_manage:
+    command: shell -c "from django.contrib.auth.models import User ; users = User.objects.filter(is_superuser=True) ; user = users.get(username='admin') ; user.set_password('Minions12345') ; user.save() ; exit()"
+    virtualenv: "{{ netbox_working_directory }}/venv"
+    project_path: "{{ netbox_working_directory }}/netbox"
+
+  register: checksuperuser
+  ignore_errors: True
+  changed_when: False
+
+- name: Schedule housekeeping
+  file:
+    src: /opt/netbox/contrib/netbox-housekeeping.sh
+    dest: /etc/cron.daily/netbox-housekeeping
+    state: link
+
+- name: Copy gunicorn configuration
+  copy:
+    src: /opt/netbox/contrib/gunicorn.py
+    dest: /opt/netbox/gunicorn.py
+
+- name: Copy .service files to /etc/systemd/system
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: '0644'
+  register: copy_result
+  with_fileglob:
+    - "/opt/netbox/contrib/*.service"
+
+- name: Reload systemd manager configuration
+  command: systemctl daemon-reload
+  when: copy_result.changed
+
+- name: Enable and restart netbox and netbox-rq services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+  with_items:
+    - netbox
+    - netbox-rq
+  when: copy_result.changed
+
+- name: Check if certificate files exist
+  stat:
+    path: "{{ item }}"
+  register: result
+  with_items:
+    - "{{ private_key_file }}"
+    - "{{ cert_file }}"
+
+- name: Check if certificate is valid for the next month
+  command: >
+    openssl x509 -checkend {{ (30 * 24 * 60 * 60) }} -noout -in {{ cert_file }}
+  register: cert_check_result
+  failed_when: cert_check_result.rc == 1
+  changed_when: false
+  when: result.results | selectattr('stat.exists') | list | length == 2
+
+- name: Generate RSA private key and self-signed certificate
+  command: >
+    openssl req -x509 -newkey rsa:2048 -keyout {{ private_key_file }} -out {{ cert_file }} -days 365 -nodes -subj '{{ subject }}'
+  when: result.results | selectattr('stat.exists', 'equalto', false) | list | length > 0 or cert_check_result.rc == 1
+
+- name: Copy nginx.conf.j2 to /etc/nginx/sites_available/netbox
+  template:
+    src: ./nginx.conf.j2
+    dest: /etc/nginx/sites-available/netbox
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create /etc/nginx/sites-available/netbox from template
+  template:
+    src: ./nginx.conf.j2
+    dest: /etc/nginx/sites-available/netbox
+  register: template_result
+
+- name: Remove /etc/nginx/sites-enabled/default
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  register: remove_result
+
+- name: Create symbolic link /etc/nginx/sites-enabled/netbox
+  file:
+    src: /etc/nginx/sites-available/netbox
+    dest: /etc/nginx/sites-enabled/netbox
+    state: link
+  register: link_result
+
+- name: Restart nginx service
+  systemd:
+    name: nginx
+    state: restarted
+  when: template_result.changed or remove_result.changed or link_result.changed

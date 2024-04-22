@@ -1,0 +1,13 @@
+users:
+  - name: user
+    passwd: $(openssl passwd -1 Test123)
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash
+
+ansible:
+  install_method: distro
+  package_name: ansible.noarch
+  pull:
+    accept_host_key: true
+    url: "https://github.com/darrenstarr/cloud-init-ansible.git"
+    playbook_name: "netbox.yml"
