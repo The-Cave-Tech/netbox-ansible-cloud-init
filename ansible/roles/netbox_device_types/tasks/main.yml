@@ -1,25 +1,25 @@
 ---
-  - name: Generate Python script from template
-    template:
-      src: generate_token.py.j2
-      dest: /tmp/generated_script.py
+- name: Generate Python script from template
+  template:
+    src: generate_token.py.j2
+    dest: /tmp/generated_script.py
 
-  - name: Run the Python script
-    command: /opt/netbox/venv/bin/python/bin /tmp/generated_script.py
-    register: script_output
+- name: Run the Python script
+  command: /opt/netbox/venv/bin/python/bin /tmp/generated_script.py
+  register: script_output
 
-  - name: Store trimmed output in variable
-    set_fact:
-      generated_token: "{{ script_output.stdout | trim }}"
+- name: Store trimmed output in variable
+  set_fact:
+    generated_token: "{{ script_output.stdout | trim }}"
 
-  - name: Show token
-    debug:
-      msg: "Token : {{ generated_token }}"
+- name: Show token
+  debug:
+    msg: "Token : {{ generated_token }}"
 
-  # - name: Delete the Python script
-  #   file:
-  #     path: /tmp/generated_script.py
-  #     state: absent
+# - name: Delete the Python script
+#   file:
+#     path: /tmp/generated_script.py
+#     state: absent
 
 - name: Install required packages
   apt:
