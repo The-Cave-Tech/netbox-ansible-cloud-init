@@ -4,3 +4,4 @@
   become: yes
   roles:
     - netbox
+    - netbox_device_types

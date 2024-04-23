@@ -1,5 +1,5 @@
 ---
-- name: Make the first API call with username and password
+- name: Create a token for API calls
   uri:
     url: https://localhost/api/users/tokens/provision/
     method: POST
@@ -15,31 +15,6 @@
 - name: Extract the token from the response
   set_fact:
     generated_token: "{{ response.json.key }}"
-
-# - name: Generate Python script from template
-#   template:
-#     src: generate_token.py.j2
-#     dest: /tmp/generated_script.py
-
-# - name: Install pynetbox
-#   command: /opt/netbox/venv/bin/pip install pynetbox
-
-# - name: Run the Python script
-#   command: /opt/netbox/venv/bin/python /tmp/generated_script.py
-#   register: script_output
-
-# - name: Store trimmed output in variable
-#   set_fact:
-#     generated_token: "{{ script_output.stdout | trim }}"
-
-- name: Show token
-  debug:
-    msg: "Token : {{ generated_token }}"
-
-# - name: Delete the Python script
-#   file:
-#     path: /tmp/generated_script.py
-#     state: absent
 
 - name: Install required packages
   apt:
