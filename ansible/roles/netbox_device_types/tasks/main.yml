@@ -1,19 +1,34 @@
 ---
-- name: Generate Python script from template
-  template:
-    src: generate_token.py.j2
-    dest: /tmp/generated_script.py
+- name: Make the first API call with username and password
+  uri:
+    url: http://api.example.com/endpoint1
+    method: POST
+    body_format: json
+    body: 
+      username: "{{ netbox_username }}"
+      password: "{{ netbox_admin_password}}"
+    return_content: yes
+  register: response
 
-- name: Install pynetbox
-  command: /opt/netbox/venv/bin/pip install pynetbox
-
-- name: Run the Python script
-  command: /opt/netbox/venv/bin/python /tmp/generated_script.py
-  register: script_output
-
-- name: Store trimmed output in variable
+- name: Extract the token from the response
   set_fact:
-    generated_token: "{{ script_output.stdout | trim }}"
+    generated_token: "{{ response.json.key }}"
+
+# - name: Generate Python script from template
+#   template:
+#     src: generate_token.py.j2
+#     dest: /tmp/generated_script.py
+
+# - name: Install pynetbox
+#   command: /opt/netbox/venv/bin/pip install pynetbox
+
+# - name: Run the Python script
+#   command: /opt/netbox/venv/bin/python /tmp/generated_script.py
+#   register: script_output
+
+# - name: Store trimmed output in variable
+#   set_fact:
+#     generated_token: "{{ script_output.stdout | trim }}"
 
 - name: Show token
   debug:
