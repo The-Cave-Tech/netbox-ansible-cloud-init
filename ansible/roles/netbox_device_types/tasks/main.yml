@@ -1,9 +1,10 @@
 ---
 - name: Make the first API call with username and password
   uri:
-    url: http://api.example.com/endpoint1
+    url: https://localhost/api/users/tokens/provision/
     method: POST
     body_format: json
+    validate_certs: no
     body: 
       username: "{{ netbox_username }}"
       password: "{{ netbox_admin_password}}"
