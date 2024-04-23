@@ -3,6 +3,7 @@ import pprint
 import yaml
  
 nb_conn = pynetbox.api(url='https://localhost')
+nb_conn.http_session.verify = False
  
 token = nb_conn.create_token('{{ netbox_username }}', '{{ netbox_admin_password }}')
  
