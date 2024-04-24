@@ -1,0 +1,10 @@
+---
+- name: Configure network settings
+  template:
+    src: netplan.yaml
+    dest: "/etc/netplan/50-cloud-init.yaml"
+  register: netplan
+
+- name: Apply network settings
+  command: netplan apply
+  when: netplan.changed
