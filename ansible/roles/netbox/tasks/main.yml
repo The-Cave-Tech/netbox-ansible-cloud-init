@@ -89,10 +89,6 @@
   ignore_errors: true
   changed_when: false
 
-#- name: Display the contents of secret_key
-#  debug: 
-#    msg: "Key is {{ old_secret_key.stdout }}" 
-
 - name: Set the secret key
   set_fact: 
     secret_key: "{{ old_secret_key.stdout }}"
