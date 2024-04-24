@@ -1,6 +1,0 @@
----
-- name: Run netbox role on all netbox-nodes
-  hosts: netbox_nodes
-  become: yes
-  roles:
-    - network_config
