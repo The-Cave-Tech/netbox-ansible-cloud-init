@@ -5,4 +5,4 @@
   roles:
     - network_config
     - netbox
-    #- netbox_device_types
+    - netbox_device_types

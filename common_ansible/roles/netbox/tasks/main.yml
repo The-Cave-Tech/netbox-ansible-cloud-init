@@ -29,12 +29,6 @@
   pip:
     name: psycopg2
 
-# - name: Add user to sudoers file
-#   ansible.builtin.lineinfile:
-#     path: /etc/sudoers
-#     line: '{{ ansible_user }} ALL=(postgres) NOPASSWD:ALL'
-#     validate: 'visudo -cf %s'
-
 - name: Create netbox user
   become_user: postgres
   postgresql_user:
