@@ -17,7 +17,7 @@
     generated_token: "{{ response.json.key }}"
 
 - name: Install required packages
-  apt:
+apt:
     name:
       - python3-virtualenv
     state: present

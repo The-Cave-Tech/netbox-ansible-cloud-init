@@ -1,0 +1,13 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ network_interface }}:
+      dhcp4: {{ network_dhcp }}
+      addresses:
+        - {{ network_address }}/{{ network_prefix_length }}
+      routes:
+      - to: default
+        via: {{ network_default_gateway}}
+      nameservers:
+        addresses: [{{ network_dns_server }}]

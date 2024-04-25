@@ -1,0 +1,54 @@
+---
+- name: Create a token for API calls
+  uri:
+    url: https://localhost/api/users/tokens/provision/
+    method: POST
+    body_format: json
+    validate_certs: no
+    body: 
+      username: "{{ netbox_username }}"
+      password: "{{ netbox_admin_password}}"
+    return_content: yes
+    status_code: 201
+  register: response
+
+- name: Extract the token from the response
+  set_fact:
+    generated_token: "{{ response.json.key }}"
+
+- name: Install required packages
+apt:
+    name:
+      - python3-virtualenv
+    state: present
+
+- name: Clone Device-Type-Library-Import repository
+  git:
+    repo: 'https://github.com/netbox-community/Device-Type-Library-Import.git'
+    dest: '/tmp/device-type-library-import'
+    clone: yes
+    update: yes
+
+- name: Generate environment
+  template:
+    src: env.j2
+    dest: /tmp/device-type-library-import/.env
+
+- name: Install requirements using pip
+  pip:
+    requirements: '/tmp/device-type-library-import/requirements.txt'
+    virtualenv: '/tmp/device-type-library-import/Device-Type-Library-Import'
+
+- name: If /tmp/device-type-library-import/netbox_api.py contains the line "#requests.packages.urllib3.disable_warnings()" then uncomment it
+  lineinfile:
+    path: /tmp/device-type-library-import/netbox_api.py
+    regexp: '#requests.packages.urllib3.disable_warnings()'
+    line: 'requests.packages.urllib3.disable_warnings()'
+
+- name: Run the import script
+  shell:
+    /tmp/device-type-library-import/Device-Type-Library-Import/bin/python ./nb-dt-import.py
+  args:
+    chdir: '/tmp/device-type-library-import'
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/tmp/device-type-library-import/Device-Type-Library-Import"
