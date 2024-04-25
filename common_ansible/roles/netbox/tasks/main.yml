@@ -29,6 +29,7 @@
     name: psycopg2
 
 - name: Create netbox user
+  become: true
   become_user: postgres
   postgresql_user:
     name: netbox
