@@ -1,7 +1,7 @@
 all:
   hosts:
-    localhost:
+    netbox.thecavetech.local:
   children:
     netbox_nodes:
       hosts:
-        localhost:
+        netbox.thecavetech.local:
