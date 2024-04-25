@@ -1,32 +1,24 @@
 import argparse
-import os
+from jinja2 import Environment, FileSystemLoader
 
 # Create the parser
-parser = argparse.ArgumentParser(description='Process some files.')
+parser = argparse.ArgumentParser(description='Substitute variables in a Jinja2 template.')
 
 # Add the arguments
-parser.add_argument('--template', metavar='template', type=str, help='the path to the Jinja2 template')
-parser.add_argument('--key', metavar='key', type=str, help='the path to the SSH public key')
-parser.add_argument('--output', metavar='output', type=str, help='the path to the output file')
+parser.add_argument('--template', metavar='template', type=str, required=True, help='the path to the Jinja2 template')
+parser.add_argument('--output', metavar='output', type=str, required=True, help='the path to the output file')
+parser.add_argument('--ssh_key', metavar='ssh_key', type=str, required=True, help='the value for the ssh_key variable')
+parser.add_argument('--vmname', metavar='vmname', type=str, required=True, help='the value for the vmname variable')
 
 # Parse the arguments
 args = parser.parse_args()
 
-# Check if any of the required arguments are missing
-if not all([args.template, args.key, args.output]):
-    parser.print_help()
-    exit()
+# Load the template
+env = Environment(loader=FileSystemLoader('/'))
+template = env.get_template(args.template)
 
-# Read the SSH public key from the file
-with open(args.key, 'r') as file:
-    ssh_key = file.read().strip()
-
-# Read the Jinja2 template from the file
-with open(args.template, 'r') as file:
-    template = file.read()
-
-# Substitute the SSH key into the template
-output = template.replace('{{ ssh_key }}', ssh_key)
+# Substitute the variables
+output = template.render(ssh_key=args.ssh_key, vmname=args.vmname)
 
 # Write the output to the output file
 with open(args.output, 'w') as file:
