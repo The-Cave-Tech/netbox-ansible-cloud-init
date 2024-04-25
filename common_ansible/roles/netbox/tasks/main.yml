@@ -17,6 +17,7 @@
       - zlib1g-dev
       - redis-server
       - nginx
+      - acl
     state: present
 
 - name: Install libpq-dev
