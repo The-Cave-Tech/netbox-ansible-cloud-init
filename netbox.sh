@@ -5,9 +5,14 @@ VM_NAME="netbox"
 
 SOURCE_IMAGE="/var/lib/libvirt/images/jammy-server-cloudimg-amd64-disk-kvm.img"
 IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
-CLOUD_INIT="$PWD/netbox-auto-cloud-init.yaml"
+CLOUD_INIT="$PWD/netbox-cloud-init.yaml"
+CLOUD_INIT_TEMPLATE="$CLOUD_INIT.j2"
+USER_PUBLIC_KEY="/etc/ssh/ssh_host_ed25519_key.pub"
 
-echo "cloud-init=$CLOUD_INIT"
+/usr/bin/python3 utility/generate_cloud_init.py \
+    --key $USER_PUBLIC_KEY \
+    --template $CLOUD_INIT_TEMPLATE \
+    --output $CLOUD_INIT
 
 # Check if the VM is running and shut it down
 if virsh list --name | grep -q "$VM_NAME"; then
