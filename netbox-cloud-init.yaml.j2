@@ -8,6 +8,8 @@ users:
     groups: sudo
     shell: /bin/bash
     passwd: $6$YD8WbS.EhZFlfAvE$b9BwbfMEQJiNztZmhFsNY7hUP86W.Ao6.fi2SJ3CcO9ijfEClA2ABI4tOQjinvCtOynvvSZxWoDGuTLy2n59s0
+    authorized_keys:
+    - {{ ssh_key }}
     lock_passwd: false
 package_update: true
 package_upgrade: true
