@@ -4,5 +4,5 @@
   become: yes
   roles:
     - network_config
-    #- netbox
+    - netbox
     #- netbox_device_types
