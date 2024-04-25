@@ -166,8 +166,9 @@
 
 - name: Copy gunicorn configuration
   copy:
-    remote_src: /opt/netbox/contrib/gunicorn.py
+    src: /opt/netbox/contrib/gunicorn.py
     dest: /opt/netbox/gunicorn.py
+    remote_src: true
 
 - name: Copy .service files to /etc/systemd/system
   copy:
