@@ -1,7 +1,11 @@
 all:
   hosts:
     netbox.thecavetech.local:
+    kea.thecavetech.local:
   children:
+    kea_nodes:
+      hosts:
+        kea.thecavetech.local:
     netbox_nodes:
       hosts:
         netbox.thecavetech.local:

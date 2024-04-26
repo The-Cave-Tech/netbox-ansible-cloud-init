@@ -1,8 +1,14 @@
 ---
-- name: Run netbox role on all netbox-nodes
-  hosts: netbox_nodes
+- name: Run system roles on all nodes
+  hosts: all
   become: yes
   roles:
     - network_config
-    - netbox
-    - netbox_device_types
+
+# - name: Run netbox role on all netbox-nodes
+#   hosts: netbox_nodes
+#   become: yes
+#   roles:
+#     - network_config
+#     - netbox
+#     - netbox_device_types
