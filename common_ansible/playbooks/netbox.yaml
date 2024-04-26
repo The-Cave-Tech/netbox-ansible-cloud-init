@@ -5,10 +5,15 @@
   roles:
     - network_config
 
+- name: Run netbox role on all netbox-nodes
+  hosts: kea_nodes
+  become: yes
+  roles:
+    - kea-dhcp-server
+
 # - name: Run netbox role on all netbox-nodes
 #   hosts: netbox_nodes
 #   become: yes
 #   roles:
-#     - network_config
 #     - netbox
 #     - netbox_device_types
