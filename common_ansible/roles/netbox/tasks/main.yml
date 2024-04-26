@@ -181,6 +181,7 @@
     src: "{{ item.path }}"
     dest: "/etc/systemd/system/{{ item.path | basename }}"
     remote_src: yes
+  register: copy_result
   with_items: "{{ service_files.files }}"
 
 - name: Reload systemd manager configuration
