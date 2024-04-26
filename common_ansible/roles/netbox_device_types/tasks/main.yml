@@ -57,3 +57,4 @@
     /tmp/device-type-library-import/Device-Type-Library-Import/bin/python ./nb-dt-import.py
   args:
     chdir: '/tmp/device-type-library-import'
+  ignore_errors: yes
