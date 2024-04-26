@@ -10,7 +10,7 @@ CLOUD_INIT_TEMPLATE="$CLOUD_INIT.j2"
 USER_PUBLIC_KEY="/etc/ssh/ssh_host_ed25519_key.pub"
 
 /usr/bin/python3 utility/generate_cloud_init.py \
-    --ssh-key $USER_PUBLIC_KEY \
+    --ssh_key $USER_PUBLIC_KEY \
     --template $CLOUD_INIT_TEMPLATE \
     --output $CLOUD_INIT \
     --vmname $VM_NAME
