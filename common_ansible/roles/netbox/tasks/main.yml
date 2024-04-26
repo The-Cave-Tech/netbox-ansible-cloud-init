@@ -177,6 +177,7 @@
     owner: root
     group: root
     mode: '0644'
+    remote_src: true
   register: copy_result
   with_fileglob:
     - "/opt/netbox/contrib/*.service"
