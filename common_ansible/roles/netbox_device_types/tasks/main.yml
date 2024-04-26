@@ -46,11 +46,11 @@
     requirements: '/tmp/device-type-library-import/requirements.txt'
     virtualenv: '/tmp/device-type-library-import/Device-Type-Library-Import'
 
-- name: If /tmp/device-type-library-import/netbox_api.py contains the line "#requests.packages.urllib3.disable_warnings()" then uncomment it
-  lineinfile:
+- name: Uncomment disable_warnings line
+  ansible.builtin.replace:
     path: /tmp/device-type-library-import/netbox_api.py
     regexp: '#requests.packages.urllib3.disable_warnings()'
-    line: 'requests.packages.urllib3.disable_warnings()'
+    replace: 'requests.packages.urllib3.disable_warnings()'
 
 - name: Run the import script
   shell:
