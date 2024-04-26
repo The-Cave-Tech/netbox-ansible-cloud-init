@@ -24,7 +24,7 @@ ansible:
   setup_controller:
     repositories:
       - path: /tmp/ansible/
-        source: "https://github.com/The-Cave-Tech/{{ vmname }}-ansible-cloud-init.git"
+        source: "https://github.com/The-Cave-Tech/netbox-ansible-cloud-init.git"
     run_ansible:
-      - playbook_dir: /tmp/ansible/netbox_ansible
-        playbook_name: playbooks/netbox.yaml
+      - playbook_dir: /tmp/ansible/{{ vmname }}_ansible
+        playbook_name: playbooks/{{ vmname }}.yaml
