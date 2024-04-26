@@ -10,6 +10,7 @@
       password: "{{ netbox_admin_password}}"
     return_content: yes
     status_code: 201
+    remote_src: true
   register: response
 
 - name: Extract the token from the response
