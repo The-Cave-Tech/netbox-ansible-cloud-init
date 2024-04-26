@@ -5,7 +5,7 @@
 
 - name: Install Kea DHCP server
   ansible.builtin.apt:
-    name: isc-kea-dhcp4-server
+    name: kea
     state: present
 
 - name: Install Kea DHCP admin
