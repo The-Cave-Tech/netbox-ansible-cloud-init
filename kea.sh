@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Name of the virtual machine
-VM_NAME="netbox"
+VM_NAME="kea"
 
 SOURCE_IMAGE="/var/lib/libvirt/images/jammy-server-cloudimg-amd64-disk-kvm.img"
 IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
