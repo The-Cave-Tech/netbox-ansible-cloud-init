@@ -1,33 +1,29 @@
 ---
-- name: Install and configure Kea DHCP
-  hosts: all
-  become: yes
-  tasks:
-    - name: Update apt cache
-      ansible.builtin.apt:
-        update_cache: yes
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
 
-    - name: Install Kea DHCP server
-      ansible.builtin.apt:
-        name: isc-kea-dhcp4-server
-        state: present
+- name: Install Kea DHCP server
+  ansible.builtin.apt:
+    name: isc-kea-dhcp4-server
+    state: present
 
-    - name: Install Kea DHCP admin
-      ansible.builtin.apt:
-        name: isc-kea-admin
-        state: present
+- name: Install Kea DHCP admin
+  ansible.builtin.apt:
+    name: isc-kea-admin
+    state: present
 
-    - name: Configure Kea DHCP REST API
-      ansible.builtin.blockinfile:
-        path: /etc/kea/kea-ctrl-agent.conf
-        block: |
-          "Control-agent": {
-            "http-host": "127.0.0.1",
-            "http-port": 8000,
-            "control-sockets": {
-              "dhcp4": {
-                "socket-type": "unix",
-                "socket-name": "/tmp/kea-dhcp4-ctrl.sock"
-              }
-            }
+- name: Configure Kea DHCP REST API
+  ansible.builtin.blockinfile:
+    path: /etc/kea/kea-ctrl-agent.conf
+    block: |
+      "Control-agent": {
+        "http-host": "127.0.0.1",
+        "http-port": 8000,
+        "control-sockets": {
+          "dhcp4": {
+            "socket-type": "unix",
+            "socket-name": "/tmp/kea-dhcp4-ctrl.sock"
           }
+        }
+      }
