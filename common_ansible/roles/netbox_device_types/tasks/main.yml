@@ -23,12 +23,18 @@
       - python3-virtualenv
     state: present
 
+- name: Delete the contents of /tmp/device-type-library-import
+  file:
+    path: /tmp/device-type-library-import
+    state: absent
+
 - name: Clone Device-Type-Library-Import repository
   git:
     repo: 'https://github.com/netbox-community/Device-Type-Library-Import.git'
     dest: '/tmp/device-type-library-import'
     clone: yes
     update: yes
+    force: yes
 
 - name: Generate environment
   template:
@@ -51,5 +57,3 @@
     /tmp/device-type-library-import/Device-Type-Library-Import/bin/python ./nb-dt-import.py
   args:
     chdir: '/tmp/device-type-library-import'
-  environment:
-    PATH: "{{ ansible_env.PATH }}:/tmp/device-type-library-import/Device-Type-Library-Import"
