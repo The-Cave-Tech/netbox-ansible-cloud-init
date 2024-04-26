@@ -22,8 +22,8 @@
           }
         }
       }
-      
-  - name: Restart Kea service
-    ansible.builtin.systemd:
-      name: kea
-      state: restarted
+
+- name: Restart Kea service
+  ansible.builtin.systemd:
+    name: kea
+    state: restarted
