@@ -1,0 +1,25 @@
+# Modify the following for the administrative user account
+netbox_username: admin
+netbox_admin_email: admin@foo.com
+# Danger!!! This is a clear text password and everytime this script is run, it's reset this this value :/
+# TODO: I need a better solution. This should be a one-time thing.
+netbox_admin_password: Abc12345
+
+# The username and password that will be used for accessing the postgres database from netbox.
+postgres_user: netbox
+postgres_password: simple_password
+
+# The fully qualified domain name of the netbox server
+netbox_fqdn: "netbox.thecavetech.local"
+
+# The certificate subject to use when producing a self-signed certificate
+# TODO: Find a good way to get a real certificate here
+subject: "/C=NO/L=Oslo/O=The Cave Tech/CN=netbox.thecavetech.local"
+
+netbox_version: 3.7.5
+#allowed_hosts: "'10.*', '127.0.0.1', 'localhost'"
+allowed_hosts: "'*'"
+
+netbox_working_directory: /opt/netbox
+private_key_file: /etc/ssl/private/netbox.key
+cert_file: /etc/ssl/certs/netbox.crt

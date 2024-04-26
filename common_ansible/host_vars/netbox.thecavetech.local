@@ -1,16 +1,4 @@
-netbox_version: 3.7.5
-postgres_password: simple_password
-#allowed_hosts: "'10.*', '127.0.0.1', 'localhost'"
-allowed_hosts: "'*'"
-postgres_user: "netbox"
-netbox_username: admin
-netbox_admin_password: Abc12345
-netbox_working_directory: /opt/netbox
-netbox_admin_email: admin@foo.com
-private_key_file: /etc/ssl/private/netbox.key
-cert_file: /etc/ssl/certs/netbox.crt
-subject: "/C=NO/L=Oslo/O=The Cave Tech/CN=netbox.thecavetech.local"
-netbox_fqdn: "netbox.thecavetech.local"
+# The network configuration to apply to the network_default_gateway
 
 network_interface: enp1s0
 network_dhcp: false
