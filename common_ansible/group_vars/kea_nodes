@@ -1,0 +1,2 @@
+# The password for managing kea dhcp
+kea_ctrl_agent_password: simple_password

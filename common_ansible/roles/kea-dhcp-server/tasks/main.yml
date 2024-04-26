@@ -8,6 +8,15 @@
     name: kea
     state: present
 
+- name: Set kea-ctrl-agent password
+  ansible.builtin.copy:
+    content: "{{ kea_ctrl_agent_password }}"
+    dest: /etc/kea/kea-api-password
+    owner: root
+    group: _kea
+    mode: '0640'
+  register: password_file
+
 - name: Configure Kea DHCP REST API
   ansible.builtin.blockinfile:
     path: /etc/kea/kea-ctrl-agent.conf
@@ -23,7 +32,13 @@
         }
       }
 
+
+- name: Reconfigure kea-ctrl-agent if password changed
+  ansible.builtin.command:
+    cmd: dpkg-reconfigure kea-ctrl-agent
+  when: password_file.changed
+
 - name: Restart Kea service
   ansible.builtin.systemd:
-    name: kea
+    name: kea-ctrl-agent.service
     state: restarted
