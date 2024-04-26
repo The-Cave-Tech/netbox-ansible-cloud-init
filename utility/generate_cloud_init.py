@@ -18,6 +18,7 @@ env = Environment(loader=FileSystemLoader('/'))
 template = env.get_template(args.template)
 
 # Substitute the variables
+print(ssh_key)
 output = template.render(ssh_key=args.ssh_key, vmname=args.vmname)
 
 # Write the output to the output file
