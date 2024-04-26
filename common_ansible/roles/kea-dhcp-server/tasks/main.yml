@@ -8,11 +8,6 @@
     name: kea
     state: present
 
-- name: Install Kea DHCP admin
-  ansible.builtin.apt:
-    name: isc-kea-admin
-    state: present
-
 - name: Configure Kea DHCP REST API
   ansible.builtin.blockinfile:
     path: /etc/kea/kea-ctrl-agent.conf
@@ -27,3 +22,8 @@
           }
         }
       }
+      
+  - name: Restart Kea service
+    ansible.builtin.systemd:
+      name: kea
+      state: restarted
