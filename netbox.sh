@@ -6,7 +6,7 @@ VM_NAME="netbox"
 SOURCE_IMAGE="/var/lib/libvirt/images/jammy-server-cloudimg-amd64-disk-kvm.img"
 IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
 CLOUD_INIT="$PWD/$VM_NAME-cloud-init.yaml"
-CLOUD_INIT_TEMPLATE="$CLOUD_INIT.j2"
+CLOUD_INIT_TEMPLATE="cloud-init.yaml.j2"
 USER_PUBLIC_KEY="/etc/ssh/ssh_host_ed25519_key.pub"
 
 /usr/bin/python3 utility/generate_cloud_init.py \
