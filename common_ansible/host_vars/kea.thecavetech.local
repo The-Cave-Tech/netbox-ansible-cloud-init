@@ -1,0 +1,8 @@
+# The network configuration to apply to the network_default_gateway
+
+network_interface: enp1s0
+network_dhcp: false
+network_address: 10.2.100.4
+network_prefix_length: 24
+network_default_gateway: 10.2.100.1
+network_dns_server: 8.8.8.8

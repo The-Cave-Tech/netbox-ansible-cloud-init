@@ -47,7 +47,7 @@ qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" 10G
 
 virt-install \
         --name $VM_NAME \
-        --memory 4096 \
+        --memory 2048 \
         --vcpus 2\
         --os-variant detect=on,name=ubuntu22.10 \
         --cloud-init user-data="$CLOUD_INIT" \
