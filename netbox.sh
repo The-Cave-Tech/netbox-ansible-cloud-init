@@ -19,7 +19,7 @@ USER_PUBLIC_KEY="/etc/ssh/ssh_host_ed25519_key.pub"
 if virsh list --name | grep -q "$VM_NAME"; then
     echo "Shutting down $VM_NAME..."
     #virsh shutdown "$VM_NAME"
-    virsh destroy domain "$VM_NAME"
+    virsh destroy  "$VM_NAME"
     # Wait for the VM to shut down
     while virsh list --name | grep -q "$VM_NAME"; do
         sleep 1
