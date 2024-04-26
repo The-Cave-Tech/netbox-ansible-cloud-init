@@ -49,8 +49,8 @@
 - name: Uncomment disable_warnings line
   ansible.builtin.replace:
     path: /tmp/device-type-library-import/netbox_api.py
-    regexp: '#requests.packages.urllib3.disable_warnings()'
-    replace: 'requests.packages.urllib3.disable_warnings()'
+    regexp: '#requests.packages.urllib3.disable_warnings'
+    replace: 'requests.packages.urllib3.disable_warnings'
 
 - name: Run the import script
   shell:
