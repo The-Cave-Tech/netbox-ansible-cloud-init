@@ -170,17 +170,18 @@
     dest: /opt/netbox/gunicorn.py
     remote_src: true
 
-- name: Copy .service files to /etc/systemd/system
-  copy:
-    src: "{{ item }}"
-    dest: "/etc/systemd/system/{{ item | basename }}"
-    owner: root
-    group: root
-    mode: '0644'
-    remote_src: true
-  register: copy_result
-  with_fileglob:
-    - "/opt/netbox/contrib/*.service"
+- name: Find *.service files in /opt/netbox/contrib
+  ansible.builtin.find:
+    paths: "/opt/netbox/contrib"
+    patterns: "*.service"
+  register: service_files
+
+- name: Copy *.service files to /etc/systemd/system
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/etc/systemd/system/{{ item.path | basename }}"
+    remote_src: yes
+  with_items: "{{ service_files.files }}"
 
 - name: Reload systemd manager configuration
   command: systemctl daemon-reload
