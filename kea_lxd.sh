@@ -12,6 +12,6 @@ USER_PUBLIC_KEY=$(cat "/etc/ssh/ssh_host_ed25519_key.pub")
     --ssh_key "$USER_PUBLIC_KEY" \
     --template $CLOUD_INIT_TEMPLATE \
     --output $CLOUD_INIT \
-    --vmname $VM_NAME
+    --vmname $CONTAINER_NAME
 
 lxc launch ubuntu:22.04 $CONTAINER_NAME  -p default --config=user.user-data="$CLOUD_INIT"
