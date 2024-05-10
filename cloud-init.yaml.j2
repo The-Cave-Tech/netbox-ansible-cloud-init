@@ -13,18 +13,5 @@ users:
     lock_passwd: false
 package_update: true
 package_upgrade: true
-packages:
-  - git
-  - ansible
-  - python3-pip
-ansible:
-  install_method: pip
-  package_name: ansible
-  run_user: root
-  setup_controller:
-    repositories:
-      - path: /tmp/ansible/
-        source: "https://github.com/The-Cave-Tech/netbox-ansible-cloud-init.git"
-    run_ansible:
-      - playbook_dir: /tmp/ansible/{{ vmname }}_ansible
-        playbook_name: playbooks/system.yaml
+runcmd:
+  - if [ -f /var/run/reboot-required ]; then shutdown -r now; fi

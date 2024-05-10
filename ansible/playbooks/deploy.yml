@@ -1,0 +1,6 @@
+---
+- name: Deploy Ceph cluster
+  hosts: microceph
+  become: yes
+  roles:
+    - microceph

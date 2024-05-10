@@ -1,72 +1,120 @@
 #!/bin/bash
 
-# Name of the virtual machine
-VM_NAME="node1"
+PREFIX_LENGTH="24"
+DEFAULT_GATEWAY="10.200.1.1"
+DNS_SERVER="10.200.1.111"
+DOMAIN_NAME="netbox.local"
+
+USER_PUBLIC_KEY=$(cat "/etc/ssh/ssh_host_ed25519_key.pub")
 
 SOURCE_IMAGE="/var/lib/libvirt/images/noble-server-cloudimg-amd64.img"
-IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
-CLOUD_INIT="$PWD/$VM_NAME-cloud-init.yaml"
-CLOUD_INIT_TEMPLATE="$PWD/cloud-init.yaml.j2"
-#USER_PUBLIC_KEY=$(cat "/etc/ssh/ssh_host_ed25519_key.pub")
-USER_PUBLIC_KEY=$(cat "$HOME/.ssh/id_ed25519.pub")
 
 LVM_VG_NAME="ubuntu-vg"
-LVM_LV_NAME="$VM_NAME"
 LVM_SIZE="100G"
 
 VM_RAM=32768
 VM_VCPUS=8
 
-echo $CLOUD_INIT_TEMPLATE
-/usr/bin/python3 generate_cloud_init.py \
-    --ssh_key "$USER_PUBLIC_KEY" \
-    --template "$CLOUD_INIT_TEMPLATE" \
-    --output "$CLOUD_INIT" \
-    --vmname "$VM_NAME" 
+destroy_vm() {
+    VM_NAME="$1"
 
-# Check if the VM is running and shut it down
-if virsh list --name | grep -q "$VM_NAME"; then
-    echo "Shutting down $VM_NAME..."
-    #virsh shutdown "$VM_NAME"
-    virsh destroy  "$VM_NAME"
-    # Wait for the VM to shut down
-    while virsh list --name | grep -q "$VM_NAME"; do
-        sleep 1
-    done
-    echo "$VM_NAME has been shut down."
-else
-    echo "$VM_NAME is not running or does not exist."
-fi
+    echo "Destroying $VM_NAME"
 
-# Delete the VM
-if virsh dominfo "$VM_NAME" &>/dev/null; then
-    echo "Deleting $VM_NAME..."
-    virsh undefine "$VM_NAME" --remove-all-storage
-    echo "$VM_NAME has been deleted."
-else
-    echo "No VM named $VM_NAME exists."
-fi
+    sudo ssh-keygen -f "/root/.ssh/known_hosts" -R "$VM_NAME.$DOMAIN_NAME"
 
-if [ -f IMAGE ]; then
-  rm IMAGE
-fi
+    IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
+    LVM_LV_NAME="$VM_NAME"
 
-lvremove -f "$LVM_VG_NAME/$LVM_LV_NAME"
+    # Check if the VM is running and shut it down
+    if virsh list --name | grep -q "$VM_NAME"; then
+        echo "Shutting down $VM_NAME..."
+        #virsh shutdown "$VM_NAME"
+        virsh destroy  "$VM_NAME"
+        # Wait for the VM to shut down
+        while virsh list --name | grep -q "$VM_NAME"; do
+            sleep 1
+        done
+        echo "$VM_NAME has been shut down."
+    else
+        echo "$VM_NAME is not running or does not exist."
+    fi
 
-lvcreate -L "$LVM_SIZE" -n "$LVM_LV_NAME" "$LVM_VG_NAME"
-lvchange -a y "$LVM_VG_NAME/$LVM_LV_NAME"
+    # Delete the VM
+    if virsh dominfo "$VM_NAME" &>/dev/null; then
+        echo "Deleting $VM_NAME..."
+        virsh undefine "$VM_NAME" --remove-all-storage
+        echo "$VM_NAME has been deleted."
+    else
+        echo "No VM named $VM_NAME exists."
+    fi
 
-qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" 10G
+    if [ -f IMAGE ]; then
+    rm IMAGE
+    fi
 
-virt-install \
-        --name $VM_NAME \
-        --memory $VM_RAM \
-        --vcpus $VM_VCPUS \
-        --os-variant detect=on,name=ubuntu24.04 \
-        --cloud-init user-data="$CLOUD_INIT" \
-        --disk=size=10,backing_store="$IMAGE" \
-        --disk path="/dev/$LVM_VG_NAME/$LVM_LV_NAME" \
-        --network bridge=br0,model=virtio \
-        --graphics vnc,listen=0.0.0.0 \
-        --noautoconsole
+    lvremove -f "$LVM_VG_NAME/$LVM_LV_NAME"
+}
 
+create_vm() {
+    VM_NAME="$1"
+    IP_ADDRESS="$2"
+
+    echo "Destroying $VM_NAME"
+
+    CLOUD_INIT="$PWD/$VM_NAME-cloud-init.yaml"
+    IMAGE="/var/lib/libvirt/images/$VM_NAME.img"
+    CLOUD_INIT_TEMPLATE="$PWD/cloud-init.yaml.j2"
+    NETPLAN_PATH="/tmp/$VM_NAME.yaml"
+    LVM_LV_NAME="$VM_NAME"
+
+    
+    echo $CLOUD_INIT_TEMPLATE
+    /usr/bin/python3 utility/generate_cloud_init.py \
+        --ssh_key "$USER_PUBLIC_KEY" \
+        --template "$CLOUD_INIT_TEMPLATE" \
+        --output "$CLOUD_INIT" \
+        --vmname "$VM_NAME"
+
+    # Create the Netplan configuration file
+    cat <<EOF | sudo tee "$NETPLAN_PATH" > /dev/null
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp1s0:
+      addresses: 
+      - $IP_ADDRESS/$PREFIX_LENGTH
+      routes: 
+      - to: default
+        via: $DEFAULT_GATEWAY
+      nameservers:
+        addresses:
+        - $DNS_SERVER
+        search:
+        - $DOMAIN_NAME
+EOF
+
+    lvcreate -L "$LVM_SIZE" -n "$LVM_LV_NAME" "$LVM_VG_NAME"
+    lvchange -a y "$LVM_VG_NAME/$LVM_LV_NAME"
+
+    qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" 10G
+
+    virt-install \
+            --name $VM_NAME \
+            --memory $VM_RAM \
+            --vcpus $VM_VCPUS \
+            --os-variant detect=on,name=ubuntu24.04 \
+            --cloud-init user-data="$CLOUD_INIT",network-config="$NETPLAN_PATH" \
+            --disk=size=10,backing_store="$IMAGE" \
+            --disk path="/dev/$LVM_VG_NAME/$LVM_LV_NAME" \
+            --network bridge=br0,model=virtio \
+            --graphics vnc,listen=0.0.0.0 \
+            --noautoconsole
+}
+
+destroy_vm "node1"
+destroy_vm "node2"
+destroy_vm "node3"
+create_vm "node1" "10.200.1.71"
+create_vm "node2" "10.200.1.72"
+create_vm "node3" "10.200.1.73"
