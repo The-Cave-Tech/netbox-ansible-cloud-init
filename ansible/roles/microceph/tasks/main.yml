@@ -119,4 +119,38 @@
 
 # TODO: Add task to remove disks which don't belong
 
+- name: Check if Ceph Dashboard is running
+  shell: ceph mgr services
+  register: ceph_dashboard_status
+  changed_when: false
 
+- name: Enable Ceph Dashboard if not running
+  shell: ceph mgr module enable dashboard
+  when: "'dashboard' not in ceph_dashboard_status.stdout"
+
+- name: Create self-signed certificate for Ceph Dashboard
+  shell: ceph dashboard create-self-signed-cert
+  when: "'dashboard' not in ceph_dashboard_status.stdout"
+
+- name: Check if Ceph Dashboard has administrative user
+  shell: ceph dashboard ac-user-show {{ ceph_admin_username }}
+  register: dashboard_user_info
+  changed_when: false
+  ignore_errors: true
+  when: inventory_hostname == ansible_play_hosts[0] 
+
+- name: Write Ceph password to a temporary file
+  copy:
+    content: "{{ ceph_admin_password }}\n"
+    dest: /root/ceph_password.txt
+  when: inventory_hostname == ansible_play_hosts[0] and dashboard_user_info.rc != 0
+
+- name: Create administrative user if not present
+  shell: ceph dashboard ac-user-create {{ ceph_admin_username }} -i /root/ceph_password.txt administrator
+  when: inventory_hostname == ansible_play_hosts[0] and dashboard_user_info.rc != 0
+
+- name: Remove temporary password file
+  file:
+    path: /root/ceph_password.txt
+    state: absent
+#  when: inventory_hostname == ansible_play_hosts[0] and dashboard_user_info.rc != 0

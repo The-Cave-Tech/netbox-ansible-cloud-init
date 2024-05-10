@@ -1,2 +1,6 @@
 ceph_disks:
 - /dev/vdb
+
+# TODO: Better way to store a password
+ceph_admin_username: admin
+ceph_admin_password: Whatever
