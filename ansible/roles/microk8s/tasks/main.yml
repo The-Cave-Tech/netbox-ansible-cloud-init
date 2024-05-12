@@ -135,11 +135,6 @@
     var: dashboard_ingress_host
   when: inventory_hostname == ansible_play_hosts[0]
 
-- name: Set ingress host variable
-  set_fact:
-    ingress_host: "dashboard.netbox.local"
-  when: inventory_hostname == ansible_play_hosts[0]
-
 - name: Template the Dashboard Ingress YAML
   template:
     src: dashboard_ingress.yaml.j2

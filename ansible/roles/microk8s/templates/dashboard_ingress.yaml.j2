@@ -13,7 +13,7 @@ metadata:
 spec:
   # ingressClassName: public - optional if you need to specify ingress class
   rules:
-  - host: {{ ingress_host }}
+  - host: {{ dashboard_ingress_host }}
     http:
       paths:
       - path: /

@@ -1,9 +1,9 @@
 ---
-# - name: Deploy MicroCeph cluster
-#   hosts: microceph
-#   become: yes
-#   roles:
-#     - role: microceph      
+- name: Deploy MicroCeph cluster
+  hosts: microceph
+  become: yes
+  roles:
+    - role: microceph
 
 - name: Deploy Microk8s cluster
   hosts: microk8s
