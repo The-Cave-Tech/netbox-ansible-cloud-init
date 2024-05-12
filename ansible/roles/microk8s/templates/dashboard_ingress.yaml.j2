@@ -1,0 +1,25 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard-local
+  namespace: kube-system
+  annotations:
+    # restrict to private network scopes
+    "nginx.ingress.kubernetes.io/whitelist-source-range": "10.200.1.0/24"
+    "nginx.ingress.kubernetes.io/backend-protocol": "HTTPS"
+    "nginx.ingress.kubernetes.io/force-ssl-redirect": "true"
+    "nginx.ingress.kubernetes.io/ssl-passthrough": "true"
+spec:
+  # ingressClassName: public - optional if you need to specify ingress class
+  rules:
+  - host: {{ ingress_host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kubernetes-dashboard
+            port:
+              number: 8443

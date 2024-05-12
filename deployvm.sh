@@ -14,6 +14,7 @@ LVM_SIZE="100G"
 
 VM_RAM=32768
 VM_VCPUS=8
+VM_DISK_SIZE=32
 
 destroy_vm() {
     VM_NAME="$1"
@@ -97,7 +98,7 @@ EOF
     lvcreate -L "$LVM_SIZE" -n "$LVM_LV_NAME" "$LVM_VG_NAME"
     lvchange -a y "$LVM_VG_NAME/$LVM_LV_NAME"
 
-    qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" 10G
+    qemu-img create -b  "$SOURCE_IMAGE" -f qcow2 -F qcow2 "$IMAGE" ${VM_DISK_SIZE}G
 
     virt-install \
             --name $VM_NAME \
@@ -105,7 +106,7 @@ EOF
             --vcpus $VM_VCPUS \
             --os-variant detect=on,name=ubuntu24.04 \
             --cloud-init user-data="$CLOUD_INIT",network-config="$NETPLAN_PATH" \
-            --disk=size=10,backing_store="$IMAGE" \
+            --disk=size=$VM_DISK_SIZE,backing_store="$IMAGE" \
             --disk path="/dev/$LVM_VG_NAME/$LVM_LV_NAME" \
             --network bridge=br0,model=virtio \
             --graphics vnc,listen=0.0.0.0 \

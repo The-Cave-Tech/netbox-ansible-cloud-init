@@ -1,2 +1,5 @@
 ---
 # defaults file for microceph
+  osd_pool_default_size: 2
+  mgr_standby_modules: false
+  osd_crush_chooseleaf_type: 0

@@ -1,2 +1,3 @@
 ---
 # defaults file for microk8s
+dashboard_ingress_host: "localhost"

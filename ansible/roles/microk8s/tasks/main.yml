@@ -70,3 +70,83 @@
   retries: 10
   delay: 10
   when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Create a permanent alias for all bash users on the computer for kubectl if one doesn't already exist
+  lineinfile:
+    path: /etc/bash.bashrc
+    line: 'alias kubectl="microk8s kubectl"'
+    create: yes
+
+- name: Add user to MicroK8s group
+  user:
+    name: "{{ ansible_user }}"
+    groups: microk8s
+    append: yes
+
+- name: Enable rook-ceph addon if it's not already enabled
+  shell: microk8s enable rook-ceph
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Connect to external ceph
+  shell: microk8s connect-external-ceph
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Wait for the ceph-rbd storage class is available in kubernetes
+  shell: microk8s kubectl get storageclass
+  register: storage_classes
+  until: storage_classes.stdout.find('ceph-rbd') != -1
+  retries: 10
+  delay: 15
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Check whether the default storage class is ceph-rbd
+  shell: microk8s kubectl get storageclass ceph-rbd -o json
+  register: storage_class
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Set the is_ceph_default fact to the value of the is-default-class annotation
+  set_fact:
+    is_ceph_default: "{{ storage_class.stdout | from_json | json_query('metadata.annotations.\"storageclass.kubernetes.io/is-default-class\"') }}"
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Debug
+  debug:
+    var: is_ceph_default
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Set default storage class to Ceph RBD
+  shell: "microk8s kubectl patch storageclass ceph-rbd -p '{\"metadata\":{\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'"
+  when: inventory_hostname == ansible_play_hosts[0] and is_ceph_default == false 
+
+- name: Enable the dashboard addon
+  shell: microk8s enable dashboard
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Enable the ingress addon
+  shell: microk8s enable ingress
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Enable the cert-manager addon
+  shell: microk8s enable cert-manager
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Debug
+  debug:
+    var: dashboard_ingress_host
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Set ingress host variable
+  set_fact:
+    ingress_host: "dashboard.netbox.local"
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Template the Dashboard Ingress YAML
+  template:
+    src: dashboard_ingress.yaml.j2
+    dest: /tmp/dashboard_ingress.yaml
+  when: inventory_hostname == ansible_play_hosts[0]
+
+- name: Apply the dashboard ingress
+  shell: microk8s kubectl apply -f /tmp/dashboard_ingress.yaml
+  when: inventory_hostname == ansible_play_hosts[0]
+

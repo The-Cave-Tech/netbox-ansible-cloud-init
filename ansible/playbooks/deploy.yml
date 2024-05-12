@@ -1,12 +1,14 @@
 ---
-- name: Deploy MicroCeph cluster
-  hosts: microceph
-  become: yes
-  roles:
-    - microceph
+# - name: Deploy MicroCeph cluster
+#   hosts: microceph
+#   become: yes
+#   roles:
+#     - role: microceph      
 
 - name: Deploy Microk8s cluster
   hosts: microk8s
   become: yes
   roles:
-    - microk8s
+    - role: microk8s
+      vars: 
+        dashboard_ingress_host: "dashboard.netbox.local"
