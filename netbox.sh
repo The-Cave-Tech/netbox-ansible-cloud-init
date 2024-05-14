@@ -38,7 +38,6 @@ else
     echo "No VM named $VM_NAME exists."
 fi
 
-
 if [ -f IMAGE ]; then
   rm IMAGE
 fi

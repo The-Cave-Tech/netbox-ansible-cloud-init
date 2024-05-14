@@ -53,6 +53,7 @@ destroy_vm() {
     rm IMAGE
     fi
 
+    wipefs -a "/dev/$LVM_VG_NAME/$LVM_LV_NAME"
     lvremove -f "$LVM_VG_NAME/$LVM_LV_NAME"
 }
 

@@ -12,3 +12,4 @@
     - role: microk8s
       vars: 
         dashboard_ingress_host: "dashboard.netbox.local"
+        portainer_url: "portainer.netbox.local"
