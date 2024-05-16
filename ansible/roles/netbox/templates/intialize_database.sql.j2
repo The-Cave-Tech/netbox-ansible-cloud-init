@@ -1,0 +1,17 @@
+-- Create the database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS {{ netbox_postgres_database }};
+
+-- Create the user if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ netbox_postgres_database }}') THEN
+        CREATE USER {{ netbox_postgres_username }} WITH ENCRYPTED PASSWORD '{{ netbox_postgres_password }}';
+    END IF;
+END $$;
+
+-- Set the owner of the database
+ALTER DATABASE {{ netbox_postgres_database }} OWNER TO {{ netbox_postgres_username }};
+
+-- Connect to the database and grant necessary privileges
+\c {{ netbox_postgres_database }};
+GRANT CREATE ON SCHEMA public TO {{ netbox_postgres_username }};

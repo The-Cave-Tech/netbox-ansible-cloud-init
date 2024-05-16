@@ -19,6 +19,9 @@ all:
         node1.netbox.local:
         node2.netbox.local:
         node3.netbox.local:
+    microk8s_primary:
+      hosts:
+        node1.netbox.local:
   vars:
     ansible_ssh_private_key_file: /etc/ssh/ssh_host_ed25519_key
     ansible_user: user

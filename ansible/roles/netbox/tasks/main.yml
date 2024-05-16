@@ -1,0 +1,49 @@
+---
+
+- name: Run command and search for line
+  shell: |
+    (microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -lqt) | grep -P '^\s*{{ netbox_postgres_database }}\s*\|'
+  register: command_output
+
+- name: Initialize database_found fact
+  set_fact:
+    database_found: false
+
+- name: Set database_found fact to true if line is found
+  set_fact:
+    database_found: true
+  when: command_output.stdout != ""
+
+- name: Print database_found fact
+  debug:
+    msg: "Database found: {{ database_found }}"
+
+- name: If the database isn't found, then create it
+  shell: |
+    microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -c "CREATE DATABASE {{ netbox_postgres_database }};"
+  when: database_found != true
+
+- name: Look for the netbox user
+  shell: |
+    microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -lqt | grep -P '^\s*{{ netbox_postgres_username }}\s*\|'
+  register: user_output
+
+# - name: Add the boo.tc  Helm repository
+#   kubernetes.core.helm_repository:
+#     name: bootc
+#     repo_url: "https://charts.boo.tc"
+#     state: present
+
+# - name: Create a values.yaml file
+#   template:
+#     src: values.yaml.j2
+#     dest: "/tmp/netboxvalues.yaml"
+
+# - name: Install netbox
+#   kubernetes.core.helm:
+#     name: netbox
+#     chart_ref: "bootc/netbox"
+#     release_namespace: netbox
+#     create_namespace: true
+#     values_files:
+#       - "/tmp/netboxvalues.yaml"

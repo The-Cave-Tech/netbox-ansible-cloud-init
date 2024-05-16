@@ -220,3 +220,28 @@
 - name: Install portainer if it isn't already installed with ingress at the value in portainer_url
   shell: microk8s helm3 upgrade -i -n portainer portainer portainer/portainer  --set service.type=NodePort --set ingress.enabled=true --set ingress.hosts[0].host={{ portainer_url }} --set ingress.hosts[0].paths[0].path=\/
   when: inventory_hostname == ansible_play_hosts[0] and helm_list.stdout.find('portainer') == -1
+
+- name: Write the contents of the helm and helm3 script files
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      /snap/bin/microk8s {{ item }} "$@"
+      exit_code=$?
+      exit $exit_code
+    dest: /snap/bin/{{ item }}
+    mode: '0777'
+  with_items: 
+  - helm
+  - helm3
+
+- name: Get the kube-config data from microk8s
+  shell: microk8s.config
+  register: kubeconfig_data
+
+- name: Write the kube-config data to a file
+  copy:
+    content: "{{ kubeconfig_data.stdout }}"
+    dest: "/root/.kube/config"
+    owner: root
+    group: root
+    mode: '0600'

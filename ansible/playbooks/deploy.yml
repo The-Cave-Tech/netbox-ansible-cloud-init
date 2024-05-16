@@ -1,4 +1,10 @@
 ---
+- name: Deploy Python prerequisites
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: python
+
 - name: Deploy MicroCeph cluster
   hosts: microceph
   become: yes
@@ -13,3 +19,36 @@
       vars: 
         dashboard_ingress_host: "dashboard.netbox.local"
         portainer_url: "portainer.netbox.local"
+
+- name: Deploy PostgreSQL  
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: postgresql
+
+- name: Deploy pgAdmin4
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: pgadmin4
+      vars:
+        pgadmin4_hostname: "pgadmin4.netbox.local"
+        pgadmin4_admin_email: "admin@nocturnal.no"
+        pgadmin4_admin_default_password: "Minions12345"
+        pgadmin4_postgres_server_name: "netbox"
+        pgadmin4_postgres_server_hostname: "postgres-cluster-rw.postgres"
+
+# - name: Deploy Netbox
+#   hosts: microk8s_primary
+#   become: yes
+#   roles:
+#     - role: netbox
+#       vars:
+#         netbox_hostname: "netbox.netbox.local"
+#         netbox_admin_username: "admin"
+#         netbox_admin_password: "Minions12345"
+#         netbox_admin_email: "{{ admin@nocturnal.no }}"
+#         netbox_postgres_server: "postgres-cluster-rw.postgres"
+#         netbox_postgres_database: "netbox"
+#         netbox_postgres_username: "netbox"
+#         netbox_postgres_password: "Minions12345"

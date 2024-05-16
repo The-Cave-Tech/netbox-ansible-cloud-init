@@ -1,0 +1,21 @@
+---
+# tasks file for postgresql
+- name: Add the runix Helm repository
+  kubernetes.core.helm_repository:
+    name: runix
+    repo_url: "https://helm.runix.net"
+    state: present
+
+- name: Create a values.yaml file
+  template:
+    src: values.yaml.j2
+    dest: "/tmp/pgadmin4values.yaml"
+
+- name: Install pgAdmin4
+  kubernetes.core.helm:
+    name: pgadmin4
+    chart_ref: "runix/pgadmin4"
+    release_namespace: pgadmin4
+    create_namespace: true
+    values_files:
+      - "/tmp/pgadmin4values.yaml"
