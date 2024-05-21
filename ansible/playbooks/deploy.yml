@@ -35,7 +35,7 @@
         pgadmin4_hostname: "pgadmin4.netbox.local"
         pgadmin4_admin_email: "admin@nocturnal.no"
         pgadmin4_admin_default_password: "Minions12345"
-        pgadmin4_postgres_server_name: "netbox"
+        pgadmin4_postgres_server_name: "netboxpg"
         pgadmin4_postgres_server_hostname: "postgres-cluster-rw.postgres"
 
 # - name: Deploy Netbox

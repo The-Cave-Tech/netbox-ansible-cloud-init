@@ -1,8 +1,8 @@
 #!/bin/bash
 
 PREFIX_LENGTH="24"
-DEFAULT_GATEWAY="10.200.1.1"
-DNS_SERVER="10.200.1.111"
+DEFAULT_GATEWAY="10.2.100.1"
+DNS_SERVER="10.2.100.2"
 DOMAIN_NAME="netbox.local"
 
 USER_PUBLIC_KEY=$(cat "/etc/ssh/ssh_host_ed25519_key.pub")
@@ -10,10 +10,10 @@ USER_PUBLIC_KEY=$(cat "/etc/ssh/ssh_host_ed25519_key.pub")
 SOURCE_IMAGE="/var/lib/libvirt/images/noble-server-cloudimg-amd64.img"
 
 LVM_VG_NAME="ubuntu-vg"
-LVM_SIZE="100G"
+LVM_SIZE="30G"
 
-VM_RAM=32768
-VM_VCPUS=8
+VM_RAM=4096
+VM_VCPUS=3
 VM_DISK_SIZE=32
 
 destroy_vm() {
@@ -77,6 +77,25 @@ create_vm() {
         --output "$CLOUD_INIT" \
         --vmname "$VM_NAME"
 
+    cat <<EOF 
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp1s0:
+      addresses: 
+      - $IP_ADDRESS/$PREFIX_LENGTH
+      routes: 
+      - to: default
+        via: $DEFAULT_GATEWAY
+      nameservers:
+        addresses:
+        - $DNS_SERVER
+        search:
+        - $DOMAIN_NAME
+EOF
+
+
     # Create the Netplan configuration file
     cat <<EOF | sudo tee "$NETPLAN_PATH" > /dev/null
 network:
@@ -117,6 +136,6 @@ EOF
 destroy_vm "node1"
 destroy_vm "node2"
 destroy_vm "node3"
-create_vm "node1" "10.200.1.71"
-create_vm "node2" "10.200.1.72"
-create_vm "node3" "10.200.1.73"
+create_vm "node1" "$(dig +short node1.netbox.local)"
+create_vm "node2" "$(dig +short node2.netbox.local)"
+create_vm "node3" "$(dig +short node3.netbox.local)"
