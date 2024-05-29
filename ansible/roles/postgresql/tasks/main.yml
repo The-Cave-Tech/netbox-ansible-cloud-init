@@ -13,6 +13,21 @@
     release_namespace: cnpg-system
     create_namespace: true
 
+- name: Wait until operator deployment has at least one available replica
+  k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: cnpg-system
+    name: cnpg-cloudnative-pg
+  register: deployment_status
+  until: deployment_status.resources is defined and 
+    deployment_status.resources | length > 0 and
+    deployment_status.resources[0].status is defined and
+    deployment_status.resources[0].status.availableReplicas is defined and
+    deployment_status.resources[0].status.availableReplicas >= 1
+  retries: 10
+  delay: 10
+
 - name: Create a values.yaml file
   template:
     src: values.yaml.j2
