@@ -15,3 +15,4 @@ package_update: true
 package_upgrade: true
 runcmd:
   - if [ -f /var/run/reboot-required ]; then shutdown -r now; fi
+  - echo "READY" > /dev/ttyS1
