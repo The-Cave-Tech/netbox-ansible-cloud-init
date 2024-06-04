@@ -20,6 +20,14 @@
         dashboard_ingress_host: "dashboard.netbox.local"
         portainer_url: "portainer.netbox.local"
 
+- name: Deploy vault
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: vault
+      vars:
+        vault_ingress_hostname: "vault.netbox.local"
+
 - name: Deploy PostgreSQL  
   hosts: microk8s_primary
   become: yes
@@ -38,17 +46,35 @@
         pgadmin4_postgres_server_name: "netboxpg"
         pgadmin4_postgres_server_hostname: "postgres-cluster-rw.postgres"
 
-# - name: Deploy Netbox
-#   hosts: microk8s_primary
-#   become: yes
-#   roles:
-#     - role: netbox
-#       vars:
-#         netbox_hostname: "netbox.netbox.local"
-#         netbox_admin_username: "admin"
-#         netbox_admin_password: "Minions12345"
-#         netbox_admin_email: "{{ admin@nocturnal.no }}"
-#         netbox_postgres_server: "postgres-cluster-rw.postgres"
-#         netbox_postgres_database: "netbox"
-#         netbox_postgres_username: "netbox"
-#         netbox_postgres_password: "Minions12345"
+- name: Deploy Netbox
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: netbox
+      vars:
+        netbox_hostname: "netbox.netbox.local"
+        netbox_admin_username: "admin"
+        netbox_admin_password: "Minions12345"
+        netbox_admin_email: "admin@nocturnal.no"
+        netbox_namespace: "netbox"
+        netbox_postgres_server: "postgres-cluster-rw.postgres"
+        netbox_postgres_database: "netbox"
+        netbox_postgres_username: "netbox"
+        netbox_postgres_password: "Minions12345"
+
+- name: Deploy Netbox Device Types
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: netbox-devicetypes
+      vars:
+        netbox_hostname: "netbox.netbox.local"
+        netbox_admin_username: "admin"
+        netbox_admin_password: "Minions12345"
+        netbox_admin_email: "admin@nocturnal.no"
+        netbox_namespace: "netbox"
+        netbox_postgres_server: "postgres-cluster-rw.postgres"
+        netbox_postgres_database: "netbox"
+        netbox_postgres_username: "netbox"
+        netbox_postgres_password: "Minions12345"
+

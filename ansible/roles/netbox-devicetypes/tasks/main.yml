@@ -1,0 +1,98 @@
+---
+- name: Poll the NetBox API until it's ready for up to 10 minutes
+  uri:
+    url: "http://{{ netbox_hostname }}/api/ansi"
+    return_content: yes
+    status_code: 200
+    timeout: 600
+    validate_certs: no
+  register: response
+  until: response.status == 200
+  retries: 60
+  delay: 10
+
+- name: Check if the secret exists
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: "{{ netbox_namespace }}"
+    name: netbox-devicetypes-token
+  register: secret_info
+
+- name: Set secret_exists fact
+  set_fact:
+    secret_exists: "{{ secret_info.resources | length > 0 }}"
+
+- name: Create a token for API calls
+  uri:
+    url: "http://{{ netbox_hostname }}/api/users/tokens/provision/"
+    method: POST
+    body_format: json
+    validate_certs: no
+    body: 
+      username: "{{ netbox_admin_username }}"
+      password: "{{ netbox_admin_password}}"
+    return_content: yes
+    status_code: 201
+    remote_src: true
+  register: response
+  when: not secret_exists
+
+- name: Extract the token from the response
+  set_fact:
+    generated_token: "{{ response.json.key }}"
+  when: not secret_exists
+
+- name: Debug the token
+  debug:
+    msg: "Token: {{ generated_token }}"
+  when: not secret_exists
+
+- name: Create a kubernetes secret named netbox-devicetypes-token
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: netbox-devicetypes-token
+        namespace: "{{ netbox_namespace }}"
+      type: Opaque
+      data:
+        token: "{{ generated_token | b64encode }}"
+  when: not secret_exists
+
+- name: Check whether the device type import job is already running
+  kubernetes.core.k8s_info:
+    kind: Job
+    namespace: "{{ netbox_namespace }}"
+    name: "netbox-device-type-library-import"
+  register: job_info
+
+- name: Set job_exists fact
+  set_fact:
+    job_exists: "{{ job_info.resources | length > 0 }}"
+
+# docker run -e "NETBOX_URL=http://netbox:8080/" -e "NETBOX_TOKEN=98765434567890" ghcr.io/minitriga/netbox-device-type-library-import
+- name: Run the Netbox device type import job
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: netbox-device-type-library-import
+        namespace: "{{ netbox_namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: netbox-device-type-library-import
+                image: ghcr.io/minitriga/netbox-device-type-library-import
+                env:
+                  - name: NETBOX_URL
+                    value: "http://netbox.netbox/"
+                  - name: NETBOX_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: netbox-devicetypes-token
+                        key: token
+            restartPolicy: Never
+  when: not job_exists

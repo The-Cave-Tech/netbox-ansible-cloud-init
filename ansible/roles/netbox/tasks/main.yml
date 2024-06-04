@@ -1,49 +1,133 @@
 ---
 
-- name: Run command and search for line
-  shell: |
-    (microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -lqt) | grep -P '^\s*{{ netbox_postgres_database }}\s*\|'
+- name: Find out whether the namespace exists
+  kubernetes.core.k8s_info:
+    kind: Namespace
+    name: "{{ netbox_namespace }}"
+  register: namespace_info
+
+- name: Set namespace_exists fact
+  set_fact:
+    namespace_exists: "{{ namespace_info.resources | length > 0 }}"
+
+- name: If the namespace doesn't exist, then create it
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ netbox_namespace }}"
+  when: not namespace_exists
+
+- name: Check whether there is already a k8s secret named netbox_postgres_password
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: "{{ netbox_namespace }}"
+    name: netbox-postgres-password
+  register: secret_info
+
+- name: Set secret_exists fact
+  set_fact:
+    secret_exists: "{{ secret_info.resources | length > 0 }}"
+
+- name: If the secret doesn't exist, then create it
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: netbox-postgres-password
+        namespace: "{{ netbox_namespace }}"
+      type: Opaque
+      data:
+        postgresql-password: "{{ netbox_postgres_password | b64encode }}"
+  when: not secret_exists
+
+- name: List the databases
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -lqt"
   register: command_output
 
-- name: Initialize database_found fact
+- name: Search for a line containing the name of the database to be created
   set_fact:
-    database_found: false
-
-- name: Set database_found fact to true if line is found
-  set_fact:
-    database_found: true
-  when: command_output.stdout != ""
+    database_found: "{{ command_output.stdout | regex_search(netbox_postgres_database) is not none }}"
 
 - name: Print database_found fact
   debug:
     msg: "Database found: {{ database_found }}"
 
 - name: If the database isn't found, then create it
-  shell: |
-    microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -c "CREATE DATABASE {{ netbox_postgres_database }};"
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -c 'CREATE DATABASE {{ netbox_postgres_database }};'"
   when: database_found != true
 
-- name: Look for the netbox user
-  shell: |
-    microk8s kubectl exec postgres-cluster-1 -n postgres -ti -- /usr/bin/psql -lqt | grep -P '^\s*{{ netbox_postgres_username }}\s*\|'
-  register: user_output
+- name: Check if 'netbox' user exists
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -tAc \"SELECT COUNT(rolname) FROM pg_roles WHERE rolname = '{{ netbox_postgres_username }}';\""
+  register: user_count
 
-# - name: Add the boo.tc  Helm repository
-#   kubernetes.core.helm_repository:
-#     name: bootc
-#     repo_url: "https://charts.boo.tc"
-#     state: present
+- name: If the user doesn't exist, then create it
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -c \"CREATE USER {{ netbox_postgres_username }} WITH PASSWORD '{{ netbox_postgres_password }}';\""
+  when: (user_count.stdout | trim) == "0"
 
-# - name: Create a values.yaml file
-#   template:
-#     src: values.yaml.j2
-#     dest: "/tmp/netboxvalues.yaml"
+- name: Check who the database owner is
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -tAc \"SELECT pg_catalog.pg_get_userbyid(d.datdba) FROM pg_catalog.pg_database d WHERE d.datname = '{{ netbox_postgres_database }}';\""
+  register: database_owner
 
-# - name: Install netbox
-#   kubernetes.core.helm:
-#     name: netbox
-#     chart_ref: "bootc/netbox"
-#     release_namespace: netbox
-#     create_namespace: true
-#     values_files:
-#       - "/tmp/netboxvalues.yaml"
+- name: If the database owner isn't the user, then change it
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -c 'ALTER DATABASE {{ netbox_postgres_database }} OWNER TO {{ netbox_postgres_username }};'"
+  when: (database_owner.stdout | trim) != netbox_postgres_username
+
+
+- name: Check whether the user is has CREATE on SCHEMA public
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -tAc \"SELECT has_schema_privilege('{{ netbox_postgres_username }}', 'public', 'CREATE');\""
+  register: schema_privilege
+
+- name: Print schema_privilege fact
+  debug:
+    msg: "Schema privilege: {{ schema_privilege.stdout }}"
+
+- name: If the user doesn't have CREATE on SCHEMA public, then grant it
+  kubernetes.core.k8s_exec:
+    namespace: postgres
+    pod: postgres-cluster-1
+    command: "/usr/bin/psql -c 'GRANT CREATE ON SCHEMA public TO {{ netbox_postgres_username }};'"
+  when: (schema_privilege.stdout | trim) == "f"
+
+- name: Add the boo.tc  Helm repository
+  kubernetes.core.helm_repository:
+    name: bootc
+    repo_url: "https://charts.boo.tc"
+    state: present
+
+- name: Create a values.yaml file
+  template:
+    src: values.yaml.j2
+    dest: "/tmp/netboxvalues.yaml"
+
+- name: Install netbox
+  kubernetes.core.helm:
+    name: netbox
+    chart_ref: "bootc/netbox"
+    release_namespace: netbox
+    create_namespace: true
+    values_files:
+      - "/tmp/netboxvalues.yaml"

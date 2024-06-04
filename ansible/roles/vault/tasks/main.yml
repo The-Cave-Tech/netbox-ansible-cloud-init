@@ -1,0 +1,160 @@
+---
+- name: Check whether the vault namespace exists
+  kubernetes.core.k8s_info:
+    kind: Namespace
+    name: vault
+  register: vault_namespace
+
+- name: Check whether the pod vault-0 exists in the namespace if the namespace exists
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: vault
+    label_selectors:
+      - "app.kubernetes.io/name=vault"
+  register: vault_pod
+  when: vault_namespace.resources | length > 0
+
+- name: Check whether the vault status command is available
+  kubernetes.core.k8s_exec:
+    namespace: vault
+    pod: vault-0
+    command: "vault status -format=json"
+  register: vault_status
+  ignore_errors: true
+  when: vault_pod.resources | length > 0
+
+# - name: Debug the vault status
+#   debug:
+#     msg: "{{ vault_status }}"
+#   when: vault_pod.resources | length > 0
+
+- name: Set the fact for the sealed status
+  set_fact:
+    vault_sealed: "{{ vault_status.stdout | from_json | json_query('sealed') }}"
+  when: vault_pod is defined and (vault_pod.resources | default([])) | length > 0
+
+- name: Debug the sealed status
+  debug:
+    msg: "Vault is sealed: {{ vault_sealed }}"
+  when: vault_pod is defined and (vault_pod.resources | default([])) | length > 0
+
+- name: If the pod is sealed then use helm to uninstall the vault
+  kubernetes.core.helm:
+    name: vault
+    state: absent
+    release_namespace: vault
+  when: (vault_sealed | default (false)) and (vault_pod.resources | default ([])) | length > 0 
+
+- name: Delete the namespace
+  kubernetes.core.k8s:
+    state: absent
+    kind: Namespace
+    name: vault
+  when: (vault_sealed | default (false)) and (vault_pod.resources | default ([])) | length > 0 
+
+- name: Add the Hashicorp repository
+  kubernetes.core.helm_repository:
+    name: hashicorp
+    repo_url: "https://helm.releases.hashicorp.com"
+    state: present
+
+- name: Create a values.yaml file
+  template:
+    src: values.yaml.j2
+    dest: "/tmp/vaultvalues.yaml"
+
+- name: Install vault
+  kubernetes.core.helm:
+    name: vault
+    chart_ref: "hashicorp/vault"
+    release_namespace: vault
+    create_namespace: true
+    values_files:
+      - "/tmp/vaultvalues.yaml"
+
+- name: Set the fact vault_pod_name to vault-0
+  set_fact:
+    vault_pod_name: "vault-0"
+
+- name: Wait for the pod vault-0 to be present in the namespace vault
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: vault
+    label_selectors:
+      - "app.kubernetes.io/name=vault"
+  register: vault_pod
+  until: vault_pod.resources | length > 0
+  retries: 30
+  delay: 10
+
+- name: Wait for the pod vault-0 to become ready
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: vault
+    label_selectors:
+      - "app.kubernetes.io/name=vault"
+  register: vault_pod
+
+- name: Test for readiness by running the command "/bin/vault version" on the pod
+  kubernetes.core.k8s_exec:
+    namespace: vault
+    pod: "vault-0"
+    command: "/bin/vault version"
+  register: vault_version
+
+- name: Debug the vault version
+  debug:
+    msg: "{{ vault_version }}"
+
+- name: Test for readiness by running the command "/bin/vault version" on the pod
+  kubernetes.core.k8s_exec:
+    namespace: vault
+    pod: "vault-0"
+    command: "/bin/vault version"
+  register: vault_version
+  until: vault_version.return_code == 0
+  retries: 30
+  delay: 10
+  ignore_errors: true
+
+- name: Query vault status using json output format to find the sealed status
+  kubernetes.core.k8s_exec:
+    namespace: vault
+    pod: "{{ vault_pod_name }}"
+    command: "vault status -format=json"
+  register: vault_status
+  ignore_errors: true
+
+- name: Set the fact for the sealed status
+  set_fact:
+    vault_sealed: "{{ vault_status.stdout | from_json | json_query('sealed') }}"
+
+- name: Debug the sealed status
+  debug:
+    msg: "Vault is sealed: {{ vault_sealed }}"
+
+# - name: Initialize vault and get the unseal keys
+#   kubernetes.core.k8s_exec:
+#     namespace: vault
+#     pod: "{{ vault_pod_name }}"
+#     command: "vault operator init"
+#   register: vault_init
+#   when: vault_sealed == true
+
+# - name: Set the fact for the unseal keys
+#   set_fact:
+#     vault_unseal_keys: "{{ vault_init.stdout_lines[1:4] }}"
+#   when: vault_sealed == true
+
+# - name: Debug the unseal keys
+#   debug:
+#     msg: "Unseal keys: {{ vault_unseal_keys }}"
+#   when: vault_sealed == true
+
+# - name: Unseal the vault with the given keys
+#   kubernetes.core.k8s_exec:
+#     namespace: vault
+#     pod: "{{ vault_pod_name }}"
+#     command: "vault operator unseal {{ item }}"
+#     with_items: "{{ vault_unseal_keys }}" 
+#   when: vault_sealed == true

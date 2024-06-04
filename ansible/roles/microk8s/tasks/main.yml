@@ -93,17 +93,72 @@
   delay: 10
   when: inventory_hostname == ansible_play_hosts[0]
 
-- name: Create a permanent alias for all bash users on the computer for kubectl if one doesn't already exist
-  lineinfile:
-    path: /etc/bash.bashrc
-    line: 'alias kubectl="microk8s kubectl"'
-    create: yes
-
 - name: Add user to MicroK8s group
   user:
     name: "{{ ansible_user }}"
     groups: microk8s
     append: yes
+
+- name: Find what the latest version of kubectl is
+  shell: curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt
+  register: kubectl_version
+
+- name: Set the fact kubectl_version to the latest version of kubectl
+  set_fact:
+    kubectl_version: "{{ kubectl_version.stdout }}"
+
+- name: Debug
+  debug:
+    var: kubectl_version
+
+- name: Check whether kubectl is already installed
+  stat:
+    path: /usr/local/bin/kubectl
+  register: kubectl_installed
+
+- name: If kubectl is already installed find out the installed version number
+  shell: kubectl version --client=true -o json
+  register: kubectl_version_installed
+  when: kubectl_installed.stat.exists
+
+- name: Set the fact kubectl_version_installed to the installed version of kubectl
+  set_fact:
+    kubectl_version_installed: "{{ kubectl_version_installed.stdout | from_json | json_query('clientVersion.gitVersion') }}"
+  when: kubectl_installed.stat.exists
+
+- name: Download kubectl
+  get_url:
+    url: https://storage.googleapis.com/kubernetes-release/release/{{ kubectl_version }}/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: '0755'  
+  when: not kubectl_installed.stat.exists or kubectl_version_installed != kubectl_version
+
+- name: Check whether kubectl has a bash autocomplete script
+  stat:
+    path: /etc/bash_completion.d/kubectl
+  register: kubectl_bash_completion_installed
+
+- name: Generate a kubectl bash autocomplete script if needed
+  shell: kubectl completion bash > /etc/bash_completion.d/kubectl
+  when: not kubectl_bash_completion_installed.stat.exists or not kubectl_installed.stat.exists or kubectl_version_installed != kubectl_version
+
+- name: Ensure .kube directory exists for the user
+  file:
+    path: "/home/user/.kube"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy microk8s credentials to user's kubeconfig
+  copy:
+    src: "/var/snap/microk8s/current/credentials/client.config"
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    remote_src: true
+
 
 - name: Get a list of enabled addons
   shell: microk8s status --wait-ready --yaml
@@ -214,7 +269,7 @@
 - name: Identify whether the namespace portainer exists
   shell: microk8s kubectl get namespace portainer
   register: portainer_namespace
-  ignore_errors: yes
+  ignore_errors: true
   when: inventory_hostname == ansible_play_hosts[0]
 
 - name: Create the portainer namespace if it doesn't already exist
@@ -243,19 +298,6 @@
   shell: microk8s helm3 upgrade -i -n portainer portainer portainer/portainer  --set service.type=NodePort --set ingress.enabled=true --set ingress.hosts[0].host={{ portainer_url }} --set ingress.hosts[0].paths[0].path=\/
   when: inventory_hostname == ansible_play_hosts[0] and helm_list.stdout.find('portainer') == -1
 
-- name: Write the contents of the helm and helm3 script files
-  ansible.builtin.copy:
-    content: |
-      #!/bin/bash
-      /snap/bin/microk8s {{ item }} "$@"
-      exit_code=$?
-      exit $exit_code
-    dest: /snap/bin/{{ item }}
-    mode: '0777'
-  with_items: 
-  - helm
-  - helm3
-
 - name: Get the kube-config data from microk8s
   shell: microk8s.config
   register: kubeconfig_data
@@ -267,3 +309,64 @@
     owner: root
     group: root
     mode: '0600'
+
+- name: If there is a helm or helm3 file in /snap/bin remove it
+  file:
+    path: "/snap/bin/{{ item }}"
+    state: absent
+  with_items: 
+  - helm
+  - helm3
+
+- name: Check whether helm is currently installed in /usr/local/bin
+  stat:
+    path: /usr/local/bin/helm
+  register: helm_installed
+
+- name: If helm is installed find which version is installed
+  shell: helm version --short
+  register: helm_version_installed
+  when: helm_installed.stat.exists
+
+- name: Set the fact helm_version_installed to the installed version of helm up to but not including the '+' symbol
+  set_fact:
+    helm_version_installed: "{{ helm_version_installed.stdout.split('+')[0] }}"
+  when: helm_installed.stat.exists
+
+- name: Find what the latest version of helm is
+  shell: curl -s https://api.github.com/repos/helm/helm/releases/latest | jq -r '.tag_name'
+  register: helm_version
+
+- name: Set the fact helm_version to the latest version of helm
+  set_fact:
+    helm_version: "{{ helm_version.stdout }}"
+
+- name: Debug
+  debug:
+    var: helm_version
+
+- name: Debug the helm version installed
+  debug:
+    var: helm_version_installed
+  when: helm_installed.stat.exists
+
+- name: Download helm
+  shell: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  when: not helm_installed.stat.exists or helm_version_installed != helm_version  
+
+- name: Check whether there is a helm autocomplete script
+  stat:
+    path: /etc/bash_completion.d/helm
+  register: helm_bash_completion_installed
+
+- name: Generate a helm bash autocomplete script if needed
+  shell: helm completion bash > /etc/bash_completion.d/helm
+  when: not helm_bash_completion_installed.stat.exists
+
+- name: Check whether the helm diff plugin is installed via helm
+  shell: /usr/local/bin/helm plugin list
+  register: helm_plugins
+
+- name: Install the helm diff plugin if it isn't already installed
+  shell: /usr/local/bin/helm plugin install https://github.com/databus23/helm-diff
+  when: inventory_hostname == ansible_play_hosts[0] and helm_plugins.stdout.find('diff') == -1
