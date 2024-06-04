@@ -1,0 +1,7 @@
+- name: Deploy kea
+  hosts: microk8s_primary
+  become: yes
+  roles:
+    - role: kea
+      vars:
+        vault_ingress_hostname: "kea.netbox.local"
