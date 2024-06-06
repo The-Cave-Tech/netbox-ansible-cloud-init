@@ -4,4 +4,4 @@
   roles:
     - role: kea
       vars:
-        vault_ingress_hostname: "kea.netbox.local"
+        kea_ingress_hostname: "kea.netbox.local"
